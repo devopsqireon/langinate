@@ -1,0 +1,5 @@
+Type,Client Name,Client Email,Client Company,Source Language,Target Language,Word Count,Rate Per Word,Hours,Rate Per Hour,Deadline,Description,Notes
+translation,Sample Client,client@example.com,Sample Company,EN,ES,1000,0.15,,,2024-12-31,Sample translation job,Urgent project
+interpreting,Another Client,another@example.com,Another Company,,,,,4,50.00,2024-12-25,Sample interpreting job,Conference interpretation
+translation,Test Client,test@example.com,,FR,EN,500,0.20,,,2024-12-20,Legal document translation,
+interpreting,Meeting Client,meeting@example.com,Meeting Corp,,,,,2,75.00,2024-12-15,Business meeting,Remote interpretation
