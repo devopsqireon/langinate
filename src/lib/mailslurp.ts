@@ -76,3 +76,19 @@ export function parseEmailWebhookData(webhookData: any): ParsedEmailData {
     receivedAt: new Date(email.createdAt || email.receivedAt || Date.now())
   }
 }
+
+export async function getEmailsFromInbox(inboxId: string, limit: number = 20) {
+  try {
+    // Get emails from inbox
+    const emails = await mailslurp.inboxController.getEmails({
+      inboxId,
+      limit,
+      sort: 'DESC' // Newest first
+    })
+
+    return emails.content || []
+  } catch (error) {
+    console.error('Error fetching emails from inbox:', error)
+    throw new Error('Failed to fetch emails from inbox')
+  }
+}

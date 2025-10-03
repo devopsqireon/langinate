@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -77,7 +77,7 @@ interface Job {
 }
 
 export default function InvoiceDetails({ params }: { params: { id: string } }) {
-  const router = useRouter()
+  const router = useProgressRouter()
   const supabase = createClient()
 
   const [invoice, setInvoice] = useState<Invoice | null>(null)

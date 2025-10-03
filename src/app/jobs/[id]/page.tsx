@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -41,7 +42,7 @@ interface Job {
 }
 
 export default function JobDetails() {
-  const router = useRouter()
+  const router = useProgressRouter()
   const params = useParams()
   const jobId = params.id as string
 

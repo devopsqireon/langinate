@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -38,7 +38,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
-import NProgress from "nprogress"
 
 type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled'
 
@@ -109,7 +108,7 @@ export default function Invoices() {
   const [itemsPerPage] = useState(10)
   const [selectedClient, setSelectedClient] = useState<string>("")
   const supabase = createClient()
-  const router = useRouter()
+  const router = useProgressRouter()
 
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
@@ -558,10 +557,7 @@ export default function Invoices() {
                       <TableRow
                         key={invoice.id}
                         className="cursor-pointer hover:bg-muted/50 transition-all duration-200 group"
-                        onClick={() => {
-                          NProgress.start()
-                          router.push(`/invoices/${invoice.id}`)
-                        }}
+                        onClick={() => router.push(`/invoices/${invoice.id}`)}
                       >
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>{invoice.client_name}</TableCell>
@@ -592,7 +588,6 @@ export default function Invoices() {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  NProgress.start()
                                   router.push(`/invoices/${invoice.id}`)
                                 }}
                               >

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -118,7 +118,7 @@ export default function Jobs() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const supabase = createClient()
-  const router = useRouter()
+  const router = useProgressRouter()
 
   const form = useForm<z.infer<typeof jobSchema>>({
     resolver: zodResolver(jobSchema),
@@ -554,6 +554,41 @@ export default function Jobs() {
       setDraftJobs(data || [])
     } catch (error) {
       console.error('Error fetching draft jobs:', error)
+    }
+  }
+
+  const pollEmails = async () => {
+    try {
+      setIsGeneratingInbox(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('User not authenticated')
+        return
+      }
+
+      const response = await fetch('/api/poll-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.processed > 0) {
+          toast.success(`Found ${data.processed} new email(s)!`)
+          await fetchDraftJobs()
+        } else {
+          toast.info('No new emails found')
+        }
+      } else {
+        toast.error('Error: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error polling emails:', error)
+      toast.error('Error checking for new emails')
+    } finally {
+      setIsGeneratingInbox(false)
     }
   }
 
@@ -1056,14 +1091,34 @@ export default function Jobs() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium">Draft Jobs from Email</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={fetchDraftJobs}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={pollEmails}
+                          disabled={isGeneratingInbox}
+                        >
+                          {isGeneratingInbox ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Checking...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Check for New Emails
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={fetchDraftJobs}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh
+                        </Button>
+                      </div>
                     </div>
 
                     {draftJobs.length === 0 ? (
@@ -1139,14 +1194,20 @@ export default function Jobs() {
 
                 {/* Instructions */}
                 <div className="border rounded-lg p-4 bg-gray-50">
-                  <h4 className="font-medium mb-2">How Email Sync Works</h4>
+                  <h4 className="font-medium mb-2">How Email Sync Works (Free Version - No Webhooks Needed!)</h4>
                   <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                     <li>Generate your unique forwarding email address above</li>
                     <li>Give this email to clients or use it in your email signature</li>
-                    <li>When clients send job requests to this address, they automatically appear as draft jobs</li>
-                    <li>Review draft jobs and convert them to proper jobs with all details filled in</li>
+                    <li>When clients send job requests to this address, emails are stored in your inbox</li>
+                    <li>Click "Check for New Emails" button to fetch new emails manually</li>
+                    <li>Emails automatically convert to draft jobs - review and save them as proper jobs</li>
                     <li>New clients are automatically created from sender email addresses</li>
                   </ol>
+                  <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-xs text-blue-800">
+                      <strong>💡 Tip:</strong> Click "Check for New Emails" whenever you expect new job requests. This works with MailSlurp's free tier (no webhook subscription needed)!
+                    </p>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

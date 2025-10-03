@@ -1,6 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase-client"
 import {
   BarChart3,
@@ -11,6 +13,7 @@ import {
   User,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react"
 
 import {
@@ -20,6 +23,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -61,6 +65,11 @@ const secondaryItems = [
     icon: User,
   },
   {
+    title: "Billing",
+    url: "/subscription",
+    icon: CreditCard,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -78,6 +87,20 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
+      <SidebarHeader>
+        <Link href="/dashboard" className="flex items-center gap-2 px-2">
+          
+            <Image
+              src="/logo.svg"
+              alt="Logo"
+              width={180}
+              height={60}
+              className=""
+            />
+          
+          
+        </Link>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Translator Dashboard</SidebarGroupLabel>
@@ -86,10 +109,10 @@ export function AppSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                    <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -105,10 +128,10 @@ export function AppSidebar() {
               {secondaryItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                    <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

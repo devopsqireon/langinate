@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
@@ -86,17 +87,88 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Welcome back
-          </CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your translator account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid lg:grid-cols-2">
+      {/* Left Column - Branding */}
+      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:items-center bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative z-10 max-w-md space-y-6">
+          <Link href="/">
+            <Image
+              src="/logo.svg"
+              alt="Langinate Logo"
+              width={200}
+              height={44}
+              className="brightness-0 invert cursor-pointer"
+            />
+          </Link>
+          <h1 className="text-4xl font-bold leading-tight">
+            Welcome back to Langinate
+          </h1>
+          <p className="text-lg text-white/90">
+            Manage your translation business with ease. Access your dashboard, track jobs, and connect with clients.
+          </p>
+          <div className="space-y-4 pt-8">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Track All Your Jobs</h3>
+                <p className="text-sm text-white/80">Manage translation projects in one place</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Generate Invoices</h3>
+                <p className="text-sm text-white/80">Professional invoicing made simple</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Business Analytics</h3>
+                <p className="text-sm text-white/80">Insights to grow your business</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Login Form */}
+      <div className="flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <div className="flex justify-center lg:hidden">
+            <Link href="/">
+              <Image
+                src="/logo.svg"
+                alt="Langinate Logo"
+                width={160}
+                height={35}
+                className="cursor-pointer"
+              />
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
+            <p className="text-muted-foreground">
+              Sign in to your translator account
+            </p>
+          </div>
+
+          <div className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -198,8 +270,9 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

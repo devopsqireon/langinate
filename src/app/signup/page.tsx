@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
@@ -107,20 +108,61 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-green-600">
-              Check your email
-            </CardTitle>
-            <CardDescription className="text-center">
-              We&apos;ve sent you a confirmation link at {email}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Please check your email and click the confirmation link to activate your account.
+      <div className="min-h-screen grid lg:grid-cols-2">
+        {/* Left Column - Branding */}
+        <div className="hidden lg:flex lg:flex-col lg:justify-center lg:items-center bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+          <div className="relative z-10 max-w-md space-y-6">
+            <Link href="/">
+              <Image
+                src="/logo.svg"
+                alt="Langinate Logo"
+                width={200}
+                height={44}
+                className="brightness-0 invert cursor-pointer"
+              />
+            </Link>
+            <h1 className="text-4xl font-bold leading-tight">
+              You&apos;re Almost There!
+            </h1>
+            <p className="text-lg text-white/90">
+              Check your email to activate your account and start managing your translation business.
             </p>
+          </div>
+        </div>
+
+        {/* Right Column - Success Message */}
+        <div className="flex items-center justify-center p-8 bg-background">
+          <div className="w-full max-w-md space-y-8">
+            <div className="flex justify-center lg:hidden">
+              <Link href="/">
+                <Image
+                  src="/logo.svg"
+                  alt="Langinate Logo"
+                  width={160}
+                  height={35}
+                  className="cursor-pointer"
+                />
+              </Link>
+            </div>
+
+            <div className="space-y-4 text-center">
+              <div className="flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                  <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold text-green-600">Check your email</h2>
+              <p className="text-muted-foreground">
+                We&apos;ve sent you a confirmation link at <span className="font-medium text-foreground">{email}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Please check your email and click the confirmation link to activate your account.
+              </p>
+            </div>
+
             <Button
               variant="outline"
               className="w-full"
@@ -128,24 +170,95 @@ export default function SignupPage() {
             >
               Return to Sign In
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Create your account
-          </CardTitle>
-          <CardDescription className="text-center">
-            Join the professional translator platform
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid lg:grid-cols-2">
+      {/* Left Column - Branding */}
+      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:items-center bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative z-10 max-w-md space-y-6">
+          <Link href="/">
+            <Image
+              src="/logo.svg"
+              alt="Langinate Logo"
+              width={200}
+              height={44}
+              className="brightness-0 invert cursor-pointer"
+            />
+          </Link>
+          <h1 className="text-4xl font-bold leading-tight">
+            Start your translation business today
+          </h1>
+          <p className="text-lg text-white/90">
+            Join thousands of professional translators managing their business with Langinate.
+          </p>
+          <div className="space-y-4 pt-8">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Free 15-Day Trial</h3>
+                <p className="text-sm text-white/80">No credit card required to get started</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">All Features Included</h3>
+                <p className="text-sm text-white/80">Full access to job management, invoicing & more</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">24/7 Support</h3>
+                <p className="text-sm text-white/80">Get help whenever you need it</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Signup Form */}
+      <div className="flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <div className="flex justify-center lg:hidden">
+            <Link href="/">
+              <Image
+                src="/logo.svg"
+                alt="Langinate Logo"
+                width={160}
+                height={35}
+                className="cursor-pointer"
+              />
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Create your account</h2>
+            <p className="text-muted-foreground">
+              Join the professional translator platform
+            </p>
+          </div>
+
+          <div className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -271,8 +384,9 @@ export default function SignupPage() {
               Sign in
             </Link>
           </div>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

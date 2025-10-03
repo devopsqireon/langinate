@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,7 +59,7 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const router = useRouter()
+  const router = useProgressRouter()
   const supabase = createClient()
 
   const [jobs, setJobs] = useState<Job[]>([])

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +17,6 @@ import {
   GraduationCap,
   Download
 } from "lucide-react"
-import NProgress from "nprogress"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -42,7 +41,7 @@ interface TrainingRecord {
 }
 
 export default function Training() {
-  const router = useRouter()
+  const router = useProgressRouter()
   const supabase = createClient()
 
   const [courses, setCourses] = useState<Course[]>([])
@@ -129,7 +128,6 @@ export default function Training() {
   }
 
   const handleStartCourse = (courseId: string) => {
-    NProgress.start()
     router.push(`/training/${courseId}`)
   }
 

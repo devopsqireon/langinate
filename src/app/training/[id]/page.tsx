@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useProgressRouter } from "@/hooks/useProgressRouter"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -64,10 +64,11 @@ interface QuizAnswer {
   is_correct: boolean
 }
 
-export default function CourseDetails({ params }: { params: { id: string } }) {
-  const router = useRouter()
+export default function CourseDetails({ params }: { params: Promise<{ id: string }> }) {
+  const router = useProgressRouter()
   const supabase = createClient()
 
+  const [courseId, setCourseId] = useState<string | null>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([])
@@ -85,9 +86,16 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
 
+  // Unwrap params
   useEffect(() => {
-    fetchCourseData()
-  }, [params.id])
+    params.then(p => setCourseId(p.id))
+  }, [params])
+
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseData()
+    }
+  }, [courseId])
 
   // Auto-select first lesson when data loads
   useEffect(() => {
@@ -100,11 +108,13 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
     try {
       setLoading(true)
 
+      if (!courseId) return
+
       // Fetch course
       const { data: courseData, error: courseError } = await supabase
         .from("courses")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", courseId)
         .single()
 
       if (courseError) throw courseError
@@ -114,7 +124,7 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
       const { data: lessonsData, error: lessonsError } = await supabase
         .from("lessons")
         .select("*")
-        .eq("course_id", params.id)
+        .eq("course_id", courseId)
         .order("order_index")
 
       if (lessonsError) throw lessonsError
@@ -124,7 +134,7 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
       const { data: questionsData, error: questionsError } = await supabase
         .from("quiz_questions")
         .select("*")
-        .eq("course_id", params.id)
+        .eq("course_id", courseId)
         .order("order_index")
 
       if (questionsError) throw questionsError
@@ -210,10 +220,12 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
 
       const recordData = {
         user_id: user.id,
-        course_id: params.id,
+        course_id: courseId,
+        course_name: course?.title || 'Unknown Course',
         status: passed ? "completed" : "failed",
         score: score,
-        completed_at: passed ? new Date().toISOString() : null,
+        completion_date: passed ? new Date().toISOString().split('T')[0] : null,
+        ...(passed && { completed_at: new Date().toISOString() }),
         quiz_answers: answers
       }
 
@@ -390,204 +402,38 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
   const passed = finalScore >= course.passing_score
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="min-h-screen bg-background">
       <Toaster />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => router.push("/training")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Training
-        </Button>
-      </div>
-
-      {/* Course Info */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
-              <CardDescription className="text-base">{course.description}</CardDescription>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Badge className="bg-green-500 text-white">{course.difficulty}</Badge>
-              <Badge variant="outline">{course.category}</Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {course.duration_minutes} minutes
-            </div>
-            <div className="flex items-center gap-1">
-              <Award className="h-4 w-4" />
-              {course.passing_score}% to pass
-            </div>
-            <div className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              {lessons.length} lessons
-            </div>
-            <div className="flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" />
-              {completedLessons.size} / {lessons.length} completed
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lesson Viewer (Full Width) */}
-      {selectedLesson && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  {selectedLesson.lesson_type === "video" ? (
-                    <PlayCircle className="h-5 w-5 text-blue-500" />
-                  ) : (
-                    <FileText className="h-5 w-5 text-orange-500" />
-                  )}
-                  {selectedLesson.title}
-                </CardTitle>
-                <CardDescription>{selectedLesson.description}</CardDescription>
-              </div>
-              <Button
-                onClick={() => {
-                  handleLessonComplete(selectedLesson.id)
-                  toast.success("Lesson marked as complete")
-                }}
-                disabled={completedLessons.has(selectedLesson.id)}
-                variant={completedLessons.has(selectedLesson.id) ? "outline" : "default"}
-              >
-                {completedLessons.has(selectedLesson.id) ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Completed
-                  </>
-                ) : (
-                  "Mark as Complete"
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-              {selectedLesson.lesson_type === "video" ? (
-                <iframe
-                  src={getEmbedUrl(selectedLesson.content_url, 'video')}
-                  className="w-full h-full"
-                  allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
-              ) : (
-                <iframe
-                  src={getEmbedUrl(selectedLesson.content_url, 'pdf')}
-                  className="w-full h-full"
-                />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Lessons List */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Course Content</CardTitle>
-            <CardDescription>Complete all lessons to unlock the quiz</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {lessons.map((lesson) => {
-                const isCompleted = completedLessons.has(lesson.id)
-                const isSelected = selectedLesson?.id === lesson.id
-
-                return (
-                  <div
-                    key={lesson.id}
-                    className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
-                      isSelected ? "bg-primary/10 border-primary" : "hover:bg-muted"
-                    }`}
-                    onClick={() => setSelectedLesson(lesson)}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {lesson.lesson_type === "video" ? (
-                          <PlayCircle className="h-4 w-4 text-blue-500" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-orange-500" />
-                        )}
-                        <p className="font-medium">{lesson.title}</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {lesson.duration_minutes} min • {lesson.lesson_type.toUpperCase()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isCompleted && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quiz Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {allLessonsCompleted ? <Award className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-              Take the Quiz
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {!allLessonsCompleted && (
-                <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
-                  <p className="text-sm text-orange-900 dark:text-orange-100">
-                    Complete all {lessons.length} lessons to unlock the quiz
-                  </p>
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={() => router.push("/training")} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Training
+            </Button>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{completedLessons.size}/{lessons.length} Complete</span>
                 </div>
-              )}
-
-              <p className="text-sm text-muted-foreground">
-                {allLessonsCompleted
-                  ? "Ready to test your knowledge? Take the quiz to earn your certificate."
-                  : "Progress through all lessons to unlock the final quiz."}
-              </p>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Questions:</span>
-                  <span className="font-medium">{quizQuestions.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Passing Score:</span>
-                  <span className="font-medium">{course.passing_score}%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Lessons Completed:</span>
-                  <span className="font-medium">{completedLessons.size} / {lessons.length}</span>
+                <Separator orientation="vertical" className="h-4" />
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>{course.duration_minutes} min</span>
                 </div>
               </div>
-
-              <Separator />
-
               <Button
-                className="w-full"
                 onClick={handleStartQuiz}
                 disabled={!allLessonsCompleted || quizQuestions.length === 0}
+                size="sm"
               >
                 {allLessonsCompleted ? (
                   <>
                     <Award className="h-4 w-4 mr-2" />
-                    Start Quiz
+                    Take Quiz
                   </>
                 ) : (
                   <>
@@ -597,8 +443,208 @@ export default function CourseDetails({ params }: { params: { id: string } }) {
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
+        {/* Course Header */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
+              <p className="text-lg text-muted-foreground">{course.description}</p>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="text-sm">{course.category.replace("-", " ")}</Badge>
+              <Badge className="bg-blue-500 text-white text-sm">{course.difficulty}</Badge>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Course Progress</span>
+              <span className="font-medium">{Math.round((completedLessons.size / lessons.length) * 100)}%</span>
+            </div>
+            <Progress value={(completedLessons.size / lessons.length) * 100} className="h-2" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+          {/* Sidebar - Lessons List */}
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Course Content</CardTitle>
+                <CardDescription>{lessons.length} lessons</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                  {lessons.map((lesson, index) => {
+                    const isCompleted = completedLessons.has(lesson.id)
+                    const isSelected = selectedLesson?.id === lesson.id
+
+                    return (
+                      <div
+                        key={lesson.id}
+                        className={`flex items-start gap-3 p-4 border-b cursor-pointer transition-all ${
+                          isSelected
+                            ? "bg-primary/5 border-l-4 border-l-primary"
+                            : "hover:bg-muted border-l-4 border-l-transparent"
+                        }`}
+                        onClick={() => setSelectedLesson(lesson)}
+                      >
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium border-2 mt-0.5 ${
+                          isCompleted
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : isSelected
+                            ? 'border-primary text-primary'
+                            : 'border-muted-foreground/30 text-muted-foreground'
+                        }`}>
+                          {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {lesson.lesson_type === "video" ? (
+                              <PlayCircle className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
+                            )}
+                            <p className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : ''}`}>
+                              {lesson.title}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {lesson.duration_minutes} min
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content - Lesson Viewer */}
+          <div className="space-y-6">
+            {selectedLesson ? (
+              <>
+                {/* Lesson Header */}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {selectedLesson.lesson_type === "video" ? (
+                        <PlayCircle className="h-5 w-5 text-blue-500" />
+                      ) : (
+                        <FileText className="h-5 w-5 text-orange-500" />
+                      )}
+                      <h2 className="text-2xl font-bold">{selectedLesson.title}</h2>
+                    </div>
+                    <p className="text-muted-foreground">{selectedLesson.description}</p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      handleLessonComplete(selectedLesson.id)
+                      toast.success("Lesson marked as complete!")
+
+                      // Auto-advance to next lesson
+                      const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id)
+                      if (currentIndex < lessons.length - 1) {
+                        setTimeout(() => {
+                          setSelectedLesson(lessons[currentIndex + 1])
+                        }, 500)
+                      }
+                    }}
+                    disabled={completedLessons.has(selectedLesson.id)}
+                    variant={completedLessons.has(selectedLesson.id) ? "outline" : "default"}
+                    size="lg"
+                  >
+                    {completedLessons.has(selectedLesson.id) ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Completed
+                      </>
+                    ) : (
+                      "Mark as Complete"
+                    )}
+                  </Button>
+                </div>
+
+                {/* Video/Content Viewer */}
+                <Card className="overflow-hidden">
+                  <div className="aspect-video bg-black">
+                    {selectedLesson.lesson_type === "video" ? (
+                      <iframe
+                        src={getEmbedUrl(selectedLesson.content_url, 'video')}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      />
+                    ) : (
+                      <iframe
+                        src={getEmbedUrl(selectedLesson.content_url, 'pdf')}
+                        className="w-full h-full bg-white"
+                      />
+                    )}
+                  </div>
+                </Card>
+
+                {/* Lesson Navigation */}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id)
+                      if (currentIndex > 0) {
+                        setSelectedLesson(lessons[currentIndex - 1])
+                      }
+                    }}
+                    disabled={lessons.findIndex(l => l.id === selectedLesson.id) === 0}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous Lesson
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id)
+                      if (currentIndex < lessons.length - 1) {
+                        setSelectedLesson(lessons[currentIndex + 1])
+                      } else if (allLessonsCompleted) {
+                        handleStartQuiz()
+                      }
+                    }}
+                    disabled={lessons.findIndex(l => l.id === selectedLesson.id) === lessons.length - 1 && !allLessonsCompleted}
+                  >
+                    {lessons.findIndex(l => l.id === selectedLesson.id) === lessons.length - 1 ? (
+                      allLessonsCompleted ? (
+                        <>
+                          <Award className="h-4 w-4 mr-2" />
+                          Take Quiz
+                        </>
+                      ) : (
+                        "Complete All Lessons"
+                      )
+                    ) : (
+                      <>
+                        Next Lesson
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Card className="p-12">
+                <div className="text-center text-muted-foreground">
+                  <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Select a lesson from the sidebar to begin</p>
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Quiz Modal */}
