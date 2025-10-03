@@ -1,0 +1,4 @@
+Client Name,Email,Phone,Company Name,Company Address,Company Website,Billing Address,Payment Terms (days),Currency,Notes
+John Doe,john@example.com,+1-555-0101,Acme Corp,"123 Main St, New York, NY",https://acme.com,"123 Main St, New York, NY",30,USD,Important client - high priority
+Jane Smith,jane@techco.com,+1-555-0102,TechCo Inc,"456 Tech Ave, San Francisco, CA",https://techco.com,"456 Tech Ave, San Francisco, CA",45,USD,Monthly retainer client
+Pierre Dubois,pierre@francecorp.fr,+33-1-5555-0103,France Corp,"789 Rue de Paris, Paris",https://francecorp.fr,"789 Rue de Paris, Paris",30,EUR,European client - invoice in EUR

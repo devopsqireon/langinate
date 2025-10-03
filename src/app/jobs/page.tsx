@@ -11,12 +11,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase-client"
-import { Trash2, Upload, Plus, Mail, Download, FileText, AlertCircle, Copy, Eye, Check, RefreshCw, ExternalLink, MoreHorizontal, Edit, ArrowUpDown, Calendar, DollarSign } from "lucide-react"
+import { Trash2, Upload, Plus, Mail, Download, FileText, AlertCircle, Copy, Eye, Check, RefreshCw, ExternalLink, MoreHorizontal, Edit, ArrowUpDown, Calendar, DollarSign, Loader2, Search, X, Filter } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Papa from "papaparse"
+import { toast } from "sonner"
+import { Toaster } from "@/components/ui/sonner"
 
 type JobType = 'translation' | 'interpreting'
 type JobStatus = 'draft' | 'pending' | 'completed' | 'invoiced' | 'paid'
@@ -80,8 +83,15 @@ const jobSchema = z.object({
 
 const clientSchema = z.object({
   name: z.string().min(1, "Client name is required"),
-  email: z.string().email("Valid email required").optional().or(z.literal("")),
-  company: z.string().optional(),
+  contact_email: z.string().email("Valid email required").optional().or(z.literal("")),
+  contact_phone: z.string().optional(),
+  company_name: z.string().optional(),
+  company_address: z.string().optional(),
+  company_website: z.string().url("Valid URL required").optional().or(z.literal("")),
+  billing_address: z.string().optional(),
+  notes: z.string().optional(),
+  preferred_payment_terms: z.number().min(0).optional(),
+  preferred_currency: z.enum(['USD', 'EUR', 'GBP', 'CAD', 'AUD']).optional(),
 })
 
 export default function Jobs() {
@@ -99,6 +109,14 @@ export default function Jobs() {
   const [isGeneratingInbox, setIsGeneratingInbox] = useState(false)
   const [selectedDraftJob, setSelectedDraftJob] = useState<Job | null>(null)
   const [copiedEmail, setCopiedEmail] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmittingClient, setIsSubmittingClient] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [clientFilter, setClientFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   const supabase = createClient()
   const router = useRouter()
 
@@ -111,7 +129,10 @@ export default function Jobs() {
 
   const clientForm = useForm<z.infer<typeof clientSchema>>({
     resolver: zodResolver(clientSchema),
-    defaultValues: {},
+    defaultValues: {
+      preferred_payment_terms: 30,
+      preferred_currency: 'USD',
+    },
   })
 
   useEffect(() => {
@@ -163,19 +184,20 @@ export default function Jobs() {
   }
 
   const onSubmit = async (values: z.infer<typeof jobSchema>) => {
+    setIsSubmitting(true)
     try {
       console.log('Creating job with values:', values)
 
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) {
         console.error('Auth error:', authError)
-        alert('Authentication error: ' + authError.message)
+        toast.error('Authentication error: ' + authError.message)
         return
       }
 
       if (!user) {
         console.error('No user found')
-        alert('User not authenticated. Please log in.')
+        toast.error('User not authenticated. Please log in.')
         return
       }
 
@@ -206,18 +228,20 @@ export default function Jobs() {
 
       if (error) {
         console.error('Supabase error:', error)
-        alert('Database error: ' + error.message)
+        toast.error('Database error: ' + error.message)
         return
       }
 
       console.log('Job created successfully:', data)
-      alert('Job created successfully!')
+      toast.success('Job created successfully!')
       await fetchJobs()
       setIsModalOpen(false)
       form.reset()
     } catch (error) {
       console.error('Error creating job:', error)
-      alert('Error creating job: ' + (error as Error).message)
+      toast.error('Error creating job: ' + (error as Error).message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -260,18 +284,19 @@ export default function Jobs() {
   }
 
   const onSubmitClient = async (values: z.infer<typeof clientSchema>) => {
+    setIsSubmittingClient(true)
     try {
       // Check authentication first
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) {
         console.error('Auth error:', authError)
-        alert('Authentication error: ' + authError.message)
+        toast.error('Authentication error: ' + authError.message)
         return
       }
 
       if (!user) {
         console.error('No user found')
-        alert('User not authenticated. Please log in.')
+        toast.error('User not authenticated. Please log in.')
         return
       }
 
@@ -279,11 +304,17 @@ export default function Jobs() {
       console.log('Client data:', values)
 
       const clientData = {
-        name: values.name,
         user_id: user.id,
-        email: values.email || null,
-        company: values.company || null,
-        // Remove address and other fields that might not exist
+        name: values.name,
+        contact_email: values.contact_email || null,
+        contact_phone: values.contact_phone || null,
+        company_name: values.company_name || null,
+        company_address: values.company_address || null,
+        company_website: values.company_website || null,
+        billing_address: values.billing_address || null,
+        notes: values.notes || null,
+        preferred_payment_terms: values.preferred_payment_terms || 30,
+        preferred_currency: values.preferred_currency || 'USD',
       }
 
       console.log('Inserting client data:', clientData)
@@ -295,18 +326,23 @@ export default function Jobs() {
 
       if (error) {
         console.error('Supabase error:', error)
-        alert('Database error: ' + error.message)
+        toast.error('Database error: ' + error.message)
         return
       }
 
       console.log('Client created successfully:', data)
       await fetchClients()
       setIsClientModalOpen(false)
-      clientForm.reset()
-      alert('Client created successfully!')
+      clientForm.reset({
+        preferred_payment_terms: 30,
+        preferred_currency: 'USD',
+      })
+      toast.success('Client created successfully!')
     } catch (error) {
       console.error('Error creating client:', error)
-      alert('Error creating client: ' + (error as Error).message)
+      toast.error('Error creating client: ' + (error as Error).message)
+    } finally {
+      setIsSubmittingClient(false)
     }
   }
 
@@ -622,6 +658,30 @@ export default function Jobs() {
     return acc
   }, {} as Record<JobStatus, number>)
 
+  // Filter and search jobs
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch =
+      job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      clients.find(c => c.id === job.client_id)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesStatus = statusFilter === 'all' || job.status === statusFilter
+    const matchesType = typeFilter === 'all' || job.type === typeFilter
+    const matchesClient = clientFilter === 'all' || job.client_id === clientFilter
+
+    return matchesSearch && matchesStatus && matchesType && matchesClient
+  })
+
+  // Pagination
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage)
+  const paginatedJobs = filteredJobs.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Reset to page 1 when filters change
+  const resetPagination = () => setCurrentPage(1)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -794,8 +854,15 @@ export default function Jobs() {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Create Job
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Job...
+                      </>
+                    ) : (
+                      'Create Job'
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -1131,10 +1198,103 @@ export default function Jobs() {
             </p>
           </div>
           <div className="text-sm text-muted-foreground">
-            {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} total
+            {filteredJobs.length} of {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
+          {/* Search and Filters */}
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by description, notes, or client..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    resetPagination()
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap md:flex-nowrap">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setStatusFilter(value)
+                    resetPagination()
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="invoiced">Invoiced</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value) => {
+                    setTypeFilter(value)
+                    resetPagination()
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="translation">Translation</SelectItem>
+                    <SelectItem value="interpreting">Interpreting</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={clientFilter}
+                  onValueChange={(value) => {
+                    setClientFilter(value)
+                    resetPagination()
+                  }}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all' || clientFilter !== 'all') && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      setSearchQuery('')
+                      setStatusFilter('all')
+                      setTypeFilter('all')
+                      setClientFilter('all')
+                      resetPagination()
+                    }}
+                    title="Clear filters"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -1193,7 +1353,7 @@ export default function Jobs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobs.map((job) => (
+                  {paginatedJobs.map((job) => (
                     <TableRow
                       key={job.id}
                       className="cursor-pointer hover:bg-muted/50 transition-all duration-200 group"
@@ -1298,50 +1458,210 @@ export default function Jobs() {
               </Table>
             </div>
           )}
+
+          {/* Pagination */}
+          {!isLoading && filteredJobs.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // Show first page, last page, current page, and pages around current
+                      return page === 1 ||
+                             page === totalPages ||
+                             Math.abs(page - currentPage) <= 1
+                    })
+                    .map((page, index, array) => {
+                      // Add ellipsis if there's a gap
+                      const showEllipsisBefore = index > 0 && page - array[index - 1] > 1
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsisBefore && (
+                            <span className="px-2 text-muted-foreground">...</span>
+                          )}
+                          <Button
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            className="w-9"
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </Button>
+                        </div>
+                      )
+                    })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Client Creation Modal */}
       <Dialog open={isClientModalOpen} onOpenChange={setIsClientModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Client</DialogTitle>
           </DialogHeader>
-          <form onSubmit={clientForm.handleSubmit(onSubmitClient)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Client Name *</Label>
-              <Input
-                placeholder="Enter client name"
-                {...clientForm.register('name')}
-              />
+          <form onSubmit={clientForm.handleSubmit(onSubmitClient)} className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm text-muted-foreground">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Client Name *</Label>
+                  <Input
+                    placeholder="John Doe"
+                    {...clientForm.register('name')}
+                  />
+                  {clientForm.formState.errors.name && (
+                    <p className="text-sm text-red-600">{clientForm.formState.errors.name.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_email">Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="john@example.com"
+                    {...clientForm.register('contact_email')}
+                  />
+                  {clientForm.formState.errors.contact_email && (
+                    <p className="text-sm text-red-600">{clientForm.formState.errors.contact_email.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_phone">Phone</Label>
+                  <Input
+                    placeholder="+1 (555) 123-4567"
+                    {...clientForm.register('contact_phone')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company_name">Company Name</Label>
+                  <Input
+                    placeholder="Acme Corp"
+                    {...clientForm.register('company_name')}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm text-muted-foreground">Company Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company_website">Website</Label>
+                  <Input
+                    placeholder="https://example.com"
+                    {...clientForm.register('company_website')}
+                  />
+                  {clientForm.formState.errors.company_website && (
+                    <p className="text-sm text-red-600">{clientForm.formState.errors.company_website.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company_address">Company Address</Label>
+                  <Input
+                    placeholder="123 Main St, City, Country"
+                    {...clientForm.register('company_address')}
+                  />
+                </div>
+
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="billing_address">Billing Address</Label>
+                  <Input
+                    placeholder="123 Billing St, City, Country"
+                    {...clientForm.register('billing_address')}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm text-muted-foreground">Payment Preferences</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="preferred_currency">Preferred Currency</Label>
+                  <Select
+                    value={clientForm.watch('preferred_currency')}
+                    onValueChange={(value) => clientForm.setValue('preferred_currency', value as any)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                      <SelectItem value="GBP">GBP (£)</SelectItem>
+                      <SelectItem value="CAD">CAD (C$)</SelectItem>
+                      <SelectItem value="AUD">AUD (A$)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preferred_payment_terms">Payment Terms (days)</Label>
+                  <Input
+                    type="number"
+                    {...clientForm.register('preferred_payment_terms', { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                type="email"
-                placeholder="client@example.com"
-                {...clientForm.register('email')}
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                placeholder="Additional notes about this client..."
+                rows={4}
+                {...clientForm.register('notes')}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
-              <Input
-                placeholder="Company name"
-                {...clientForm.register('company')}
-              />
-            </div>
-
-
-            <div className="flex gap-2">
-              <Button type="submit" className="flex-1">
-                Create Client
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1" disabled={isSubmittingClient}>
+                {isSubmittingClient ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Client...
+                  </>
+                ) : (
+                  'Create Client'
+                )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsClientModalOpen(false)}
+                onClick={() => {
+                  setIsClientModalOpen(false)
+                  clientForm.reset({
+                    preferred_payment_terms: 30,
+                    preferred_currency: 'USD',
+                  })
+                }}
+                disabled={isSubmittingClient}
               >
                 Cancel
               </Button>
@@ -1349,6 +1669,7 @@ export default function Jobs() {
           </form>
         </DialogContent>
       </Dialog>
+      <Toaster position="top-right" richColors />
     </div>
   )
 }
