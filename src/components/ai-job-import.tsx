@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Upload, Loader2, CheckCircle, AlertCircle, Sparkles } from "lucide-react"
+import { Upload, Loader2, CheckCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -43,7 +43,6 @@ export function AIJobImport({ isOpen, onClose, onSuccess }: AIJobImportProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [isParsing, setIsParsing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [parsedData, setParsedData] = useState<JobReviewData | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
 
   const form = useForm<JobReviewData>({
@@ -111,8 +110,7 @@ export function AIJobImport({ isOpen, onClose, onSuccess }: AIJobImportProps) {
 
       // Set parsed data and show review modal
       const data = result.data
-      setParsedData(data)
-      form.reset(data)
+      form.reset(data as JobReviewData)
       setShowReviewModal(true)
       toast.success('Job details parsed successfully! Please review and edit as needed.')
 
@@ -155,12 +153,11 @@ export function AIJobImport({ isOpen, onClose, onSuccess }: AIJobImportProps) {
         throw new Error(error.error || 'Failed to save job')
       }
 
-      const result = await response.json()
+      await response.json()
       toast.success('Job created successfully!')
 
       // Reset everything and close
       setFile(null)
-      setParsedData(null)
       setShowReviewModal(false)
       form.reset()
       onSuccess()
@@ -176,7 +173,6 @@ export function AIJobImport({ isOpen, onClose, onSuccess }: AIJobImportProps) {
 
   const handleCancel = () => {
     setFile(null)
-    setParsedData(null)
     setShowReviewModal(false)
     form.reset()
     onClose()
@@ -323,7 +319,7 @@ export function AIJobImport({ isOpen, onClose, onSuccess }: AIJobImportProps) {
                   <Label htmlFor="type">Job Type *</Label>
                   <Select
                     value={jobType}
-                    onValueChange={(value) => form.setValue('type', value as any)}
+                    onValueChange={(value) => form.setValue('type', value as 'translation' | 'interpreting')}
                   >
                     <SelectTrigger>
                       <SelectValue />

@@ -1,16 +1,21 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import NProgress from "nprogress"
 
-export default function Template({ children }: { children: React.ReactNode }) {
+function ProgressWatcher() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     NProgress.done()
   }, [pathname, searchParams])
+
+  return null
+}
+
+export default function Template({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -55,5 +60,12 @@ export default function Template({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  return <>{children}</>
+  return (
+    <>
+      <Suspense fallback={null}>
+        <ProgressWatcher />
+      </Suspense>
+      {children}
+    </>
+  )
 }

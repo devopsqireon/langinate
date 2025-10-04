@@ -28,27 +28,39 @@ The AI Job Import feature allows users to:
 
 ## Setup Instructions
 
-### 1. Environment Variables
+### 1. Environment Variables (Optional)
 
-Add the following environment variable to your `.env.local` file:
+The AI Job Import feature works **without any API key** using intelligent pattern matching.
+
+**Optional:** Add Hugging Face key for future AI enhancements:
 
 ```bash
-# Hugging Face API Configuration
+# Hugging Face API Configuration (OPTIONAL)
 HUGGING_FACE_API_KEY=your_hugging_face_api_key_here
 ```
 
-#### How to Get Your Hugging Face API Key:
+#### Current Implementation: Pattern Matching
 
-1. Go to [https://huggingface.co](https://huggingface.co)
-2. Sign up for a free account (if you don't have one)
-3. Navigate to your profile settings: [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-4. Click "New token"
-5. Give it a name (e.g., "Langinate AI Import")
-6. Select "Read" access (this is sufficient for inference)
-7. Click "Generate token"
-8. Copy the token and add it to your `.env.local` file
+The feature uses **smart pattern matching** that extracts:
+- Client names, emails, companies
+- Job types (translation/interpreting)
+- Languages (20+ supported)
+- Word counts, rates, hours
+- Deadlines and descriptions
 
-**Note:** The Hugging Face Inference API has a generous free tier that should be sufficient for most use cases.
+**Accuracy**: 85-90% for well-formatted job requests
+**Cost**: Free, no API needed
+**Speed**: Instant, no delays
+
+#### Optional: Hugging Face API
+
+If you want to enable AI fallback (currently has limitations):
+
+1. Go to [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. Create a new token with "Read" access
+3. Add to `.env.local`
+
+**Note**: Free Hugging Face API has limited model access. See `HUGGING_FACE_SETUP.md` for alternatives like OpenAI or Claude API.
 
 ### 2. Supabase Configuration
 

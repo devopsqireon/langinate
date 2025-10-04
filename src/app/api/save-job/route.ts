@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create job
     // Note: Matching the actual database schema (source_lang, target_lang, hours)
-    const jobData: any = {
+    const jobData: Record<string, unknown> = {
       user_id: user.id,
       client_id: clientId,
       type: data.type,
