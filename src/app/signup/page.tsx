@@ -43,21 +43,107 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             name: name,
           },
         },
       })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        setSuccess(true)
+      if (signupError) {
+        setError(signupError.message)
+        setLoading(false)
+        return
       }
+
+      // Check if user needs to confirm email
+      if (authData?.user && !authData.session) {
+        // Email confirmation required - show success message
+        setSuccess(true)
+        return
+      }
+
+      // If signup successful and user is created, create their profile and trial subscription
+      if (authData?.user?.id) {
+        console.log('Creating user profile for:', authData.user.id)
+
+        // Create user profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              name: name || email.split('@')[0],
+            }
+          ])
+          .select()
+
+        if (profileError) {
+          console.error('❌ Profile creation error:', profileError)
+          setError(`Failed to create profile: ${profileError.message}`)
+          setLoading(false)
+          return
+        } else {
+          console.log('✅ Profile created successfully:', profileData)
+        }
+
+        // Create trial subscription (15 days)
+        const trialStart = new Date()
+        const trialEnd = new Date()
+        trialEnd.setDate(trialEnd.getDate() + 15)
+
+        console.log('Creating trial subscription with dates:', {
+          start: trialStart.toISOString(),
+          end: trialEnd.toISOString()
+        })
+
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .insert([
+            {
+              user_id: authData.user.id,
+              status: 'trial',
+              trial_start_date: trialStart.toISOString(),
+              trial_end_date: trialEnd.toISOString(),
+            }
+          ])
+          .select()
+
+        if (subscriptionError) {
+          console.error('❌ Subscription creation error:', subscriptionError)
+          setError(`Failed to create trial subscription: ${subscriptionError.message}`)
+          setLoading(false)
+          return
+        } else {
+          console.log('✅ Trial subscription created successfully:', subscriptionData)
+        }
+      }
+
+      // Verify session is active
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session after signup:', session ? 'Active' : 'Not found')
+
+      if (!session) {
+        console.log('No session found, trying to refresh...')
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError || !refreshedSession) {
+          console.error('Failed to establish session:', refreshError)
+          setError('Account created but failed to log in. Please try logging in manually.')
+          setLoading(false)
+          return
+        }
+        console.log('✅ Session refreshed successfully')
+      }
+
+      console.log('✅ Signup complete, redirecting to dashboard...')
+
+      // Redirect immediately since session is active
+      router.push('/dashboard')
+      router.refresh()
     } catch (err) {
       setError("An unexpected error occurred")
     } finally {

@@ -15,7 +15,12 @@ export async function getUserSubscription(): Promise<Subscription | null> {
   const supabase = createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) {
+    console.log('No user found in getUserSubscription')
+    return null
+  }
+
+  console.log('Fetching subscription for user:', user.id)
 
   const { data, error } = await supabase
     .from('subscriptions')
@@ -24,28 +29,48 @@ export async function getUserSubscription(): Promise<Subscription | null> {
     .single()
 
   if (error) {
-    console.error('Error fetching subscription:', error)
+    console.error('❌ Error fetching subscription:', error)
     return null
   }
 
+  console.log('✅ Subscription fetched:', data)
   return data
 }
 
 export async function hasActiveSubscription(): Promise<boolean> {
   const subscription = await getUserSubscription()
-  if (!subscription) return false
+  if (!subscription) {
+    console.log('❌ No subscription found - blocking access')
+    return false
+  }
+
+  console.log('Checking subscription status:', subscription.status)
 
   // Check if subscription is active
   if (subscription.status === 'active') {
+    console.log('✅ Active subscription - granting access')
     return true
   }
 
   // Check if trial is still valid
   if (subscription.status === 'trial') {
     const trialEnd = new Date(subscription.trial_end_date)
-    return trialEnd > new Date()
+    const now = new Date()
+    const isValid = trialEnd > now
+    console.log('Trial check:', {
+      trialEnd: trialEnd.toISOString(),
+      now: now.toISOString(),
+      isValid
+    })
+    if (isValid) {
+      console.log('✅ Valid trial - granting access')
+    } else {
+      console.log('❌ Trial expired - blocking access')
+    }
+    return isValid
   }
 
+  console.log('❌ No valid subscription - blocking access')
   return false
 }
 
