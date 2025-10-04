@@ -1,9 +1,13 @@
 import { MailSlurp } from 'mailslurp-client'
 
-// Initialize MailSlurp client
-export const mailslurp = new MailSlurp({
-  apiKey: process.env.MAILSLURP_API_KEY!
-})
+// Helper to get MailSlurp client
+function getMailSlurpClient() {
+  const apiKey = process.env.MAILSLURP_API_KEY
+  if (!apiKey) {
+    throw new Error('MAILSLURP_API_KEY is not configured')
+  }
+  return new MailSlurp({ apiKey })
+}
 
 export interface CreateInboxResult {
   inboxId: string
@@ -12,6 +16,7 @@ export interface CreateInboxResult {
 
 export async function createInboxForUser(): Promise<CreateInboxResult> {
   try {
+    const mailslurp = getMailSlurpClient()
     const inbox = await mailslurp.createInbox({
       name: `Translator-${Date.now()}`,
       description: 'Job request forwarding inbox'
@@ -29,6 +34,7 @@ export async function createInboxForUser(): Promise<CreateInboxResult> {
 
 export async function setupWebhookForInbox(inboxId: string, webhookUrl: string) {
   try {
+    const mailslurp = getMailSlurpClient()
     // Use the webhookController to create webhooks
     const webhook = await mailslurp.webhookController.createWebhookForInbox({
       inboxId,
@@ -79,6 +85,7 @@ export function parseEmailWebhookData(webhookData: any): ParsedEmailData {
 
 export async function getEmailsFromInbox(inboxId: string, limit: number = 20) {
   try {
+    const mailslurp = getMailSlurpClient()
     // Get emails from inbox
     const emails = await mailslurp.inboxController.getEmails({
       inboxId,
