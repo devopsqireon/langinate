@@ -14,8 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Translator SaaS",
-  description: "Professional platform for freelance translators and interpreters",
+  title: "Langinate - AI-Powered Translation & Interpreting Management",
+  description: "Streamline your translation and interpreting business with Langinate. Manage jobs, clients, invoices, and automate workflows with AI-powered job import. Built for professional translators and interpreters.",
+  keywords: ["translation management", "interpreting software", "freelance translator tools", "invoice management", "AI job import", "translation CRM"],
+  authors: [{ name: "Langinate" }],
+  openGraph: {
+    title: "Langinate - AI-Powered Translation & Interpreting Management",
+    description: "Professional platform for freelance translators and interpreters to manage jobs, clients, and invoices efficiently.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
