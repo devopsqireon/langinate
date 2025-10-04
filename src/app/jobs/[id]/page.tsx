@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/supabase-client"
-import { ArrowLeft, Edit, Save, X, Trash2 } from "lucide-react"
+import { ArrowLeft, Edit, Save, X, Trash2, FileText, CheckCircle } from "lucide-react"
+import { toast } from "sonner"
+import { Toaster } from "@/components/ui/sonner"
 
 type JobType = 'translation' | 'interpreting'
 type JobStatus = 'draft' | 'pending' | 'completed' | 'invoiced' | 'paid'
@@ -50,6 +52,7 @@ export default function JobDetails() {
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Job>>({})
 
   const supabase = createClient()
@@ -160,6 +163,113 @@ export default function JobDetails() {
     }
   }
 
+  const handleGenerateInvoice = async () => {
+    if (!job) return
+
+    // Check if job is completed
+    if (job.status !== 'completed') {
+      const shouldContinue = confirm(
+        'This job is not marked as completed. Do you want to mark it as completed and generate an invoice?'
+      )
+      if (shouldContinue) {
+        // Update job status to completed
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed' })
+          .eq('id', jobId)
+      } else {
+        return
+      }
+    }
+
+    setIsGeneratingInvoice(true)
+
+    try {
+      // Check if job already has earnings calculated
+      if (!job.earnings || job.earnings === 0) {
+        toast.error('This job has no earnings calculated. Please add rates and quantities.')
+        return
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Not authenticated')
+        return
+      }
+
+      // Generate invoice number (format: INV-YYYYMMDD-XXX)
+      const today = new Date()
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '')
+
+      // Get count of invoices today to generate unique number
+      const { data: todayInvoices } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .eq('user_id', user.id)
+        .gte('created_at', new Date(today.setHours(0, 0, 0, 0)).toISOString())
+
+      const invoiceNumber = `INV-${dateStr}-${String((todayInvoices?.length || 0) + 1).padStart(3, '0')}`
+
+      // Create line item for this job
+      const lineItem = {
+        description: `${job.type === 'translation' ? 'Translation' : 'Interpreting'} Service${job.source_lang && job.target_lang ? ` (${job.source_lang} → ${job.target_lang})` : ''}`,
+        quantity: job.type === 'translation' ? job.word_count : job.hours,
+        unit_price: job.type === 'translation' ? job.rate_per_word : job.rate_per_hour,
+        amount: job.earnings
+      }
+
+      // Calculate due date (30 days from now)
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 30)
+
+      // Create invoice
+      const invoiceData = {
+        user_id: user.id,
+        client_id: job.client_id,
+        invoice_number: invoiceNumber,
+        title: `Invoice for ${job.type === 'translation' ? 'Translation' : 'Interpreting'} Services`,
+        description: job.description || '',
+        job_ids: [jobId], // Link to this job
+        subtotal: job.earnings,
+        tax_rate: 0,
+        tax_amount: 0,
+        total_amount: job.earnings,
+        currency: 'USD',
+        issue_date: today.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        status: 'draft',
+        line_items: [lineItem],
+        notes: `Generated from Job ID: ${jobId}`
+      }
+
+      const { data: invoice, error } = await supabase
+        .from('invoices')
+        .insert([invoiceData])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Update job status to invoiced
+      await supabase
+        .from('jobs')
+        .update({ status: 'invoiced' })
+        .eq('id', jobId)
+
+      toast.success('Invoice generated successfully!')
+
+      // Redirect to invoice
+      router.push(`/invoices/${invoice.id}`)
+
+    } catch (error) {
+      console.error('Error generating invoice:', error)
+      toast.error('Failed to generate invoice: ' + (error as Error).message)
+    } finally {
+      setIsGeneratingInvoice(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
@@ -203,6 +313,23 @@ export default function JobDetails() {
         <div className="flex items-center gap-2">
           {!isEditing ? (
             <>
+              {/* Show Generate Invoice button if job is completed or has earnings */}
+              {(job.status === 'completed' || (job.status !== 'invoiced' && job.status !== 'paid' && job.earnings && job.earnings > 0)) && (
+                <Button
+                  onClick={handleGenerateInvoice}
+                  disabled={isGeneratingInvoice}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isGeneratingInvoice ? 'Generating...' : 'Generate Invoice'}
+                </Button>
+              )}
+              {job.status === 'completed' && (
+                <Button variant="outline" className="bg-green-50 border-green-200">
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                  Completed
+                </Button>
+              )}
               <Button variant="outline" onClick={handleEdit}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
@@ -494,6 +621,7 @@ export default function JobDetails() {
           </CardContent>
         </Card>
       </div>
+      <Toaster position="top-right" richColors />
     </div>
   )
 }

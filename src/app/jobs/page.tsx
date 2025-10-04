@@ -20,6 +20,8 @@ import * as z from "zod"
 import Papa from "papaparse"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
+import { AIJobImport } from "@/components/ai-job-import"
+import { Sparkles } from "lucide-react"
 
 type JobType = 'translation' | 'interpreting'
 type JobStatus = 'draft' | 'pending' | 'completed' | 'invoiced' | 'paid'
@@ -117,6 +119,7 @@ export default function Jobs() {
   const [clientFilter, setClientFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const [isAIImportOpen, setIsAIImportOpen] = useState(false)
   const supabase = createClient()
   const router = useProgressRouter()
 
@@ -726,13 +729,18 @@ export default function Jobs() {
             Manage your translation and interpreting projects.
           </p>
         </div>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Job
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsAIImportOpen(true)} variant="outline">
+            <Sparkles className="mr-2 h-4 w-4" />
+            AI Import
+          </Button>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Job
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Job</DialogTitle>
@@ -1213,6 +1221,7 @@ export default function Jobs() {
             </Tabs>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -1499,6 +1508,21 @@ export default function Jobs() {
                               <Edit className="mr-2 h-4 w-4" />
                               Update Status
                             </DropdownMenuItem>
+                            {(job.status === 'completed' || (job.status !== 'invoiced' && job.status !== 'paid' && job.earnings && job.earnings > 0)) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleJobRowClick(job.id)
+                                  }}
+                                  className="text-green-600"
+                                >
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Generate Invoice
+                                </DropdownMenuItem>
+                              </>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
@@ -1730,6 +1754,17 @@ export default function Jobs() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* AI Job Import Modal */}
+      <AIJobImport
+        isOpen={isAIImportOpen}
+        onClose={() => setIsAIImportOpen(false)}
+        onSuccess={() => {
+          fetchJobs()
+          fetchClients()
+        }}
+      />
+
       <Toaster position="top-right" richColors />
     </div>
   )

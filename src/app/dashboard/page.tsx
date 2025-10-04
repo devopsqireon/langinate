@@ -21,6 +21,8 @@ import {
   Loader2
 } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { AIJobImport } from "@/components/ai-job-import"
+import { Sparkles } from "lucide-react"
 
 interface Job {
   id: string
@@ -75,6 +77,7 @@ export default function Dashboard() {
     totalClients: 0,
     overdueInvoices: 0,
   })
+  const [isAIImportOpen, setIsAIImportOpen] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -250,6 +253,31 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* AI Import Widget */}
+      <Card className="border-2 border-dashed border-primary/50 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle>AI Job Import</CardTitle>
+            </div>
+          </div>
+          <CardDescription>
+            Upload a document and let AI extract job details automatically
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => setIsAIImportOpen(true)}
+            className="w-full"
+            variant="default"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Import Job with AI
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -464,6 +492,15 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Job Import Modal */}
+      <AIJobImport
+        isOpen={isAIImportOpen}
+        onClose={() => setIsAIImportOpen(false)}
+        onSuccess={() => {
+          fetchDashboardData()
+        }}
+      />
     </div>
   )
 }
