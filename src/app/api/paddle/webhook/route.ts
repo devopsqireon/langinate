@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Create a Supabase client with service role key for admin operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Helper to get Supabase client
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables')
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
-  }
-)
+  })
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,6 +71,7 @@ export async function POST(req: NextRequest) {
 
 async function handleSubscriptionActivated(data: any) {
   console.log('Activating subscription:', data)
+  const supabase = getSupabaseClient()
 
   // Try multiple sources for customer email
   const customerEmail = data.customer_email ||
@@ -126,6 +132,7 @@ async function handleSubscriptionActivated(data: any) {
 
 async function handleSubscriptionUpdated(data: any) {
   console.log('Updating subscription:', data)
+  const supabase = getSupabaseClient()
 
   const { error } = await supabase
     .from('subscriptions')
@@ -143,6 +150,7 @@ async function handleSubscriptionUpdated(data: any) {
 
 async function handleSubscriptionCanceled(data: any) {
   console.log('Canceling subscription:', data)
+  const supabase = getSupabaseClient()
 
   const { error } = await supabase
     .from('subscriptions')
@@ -160,6 +168,7 @@ async function handleSubscriptionCanceled(data: any) {
 
 async function handleSubscriptionPastDue(data: any) {
   console.log('Subscription past due:', data)
+  const supabase = getSupabaseClient()
 
   const { error } = await supabase
     .from('subscriptions')
@@ -179,6 +188,7 @@ async function handlePaymentCompleted(data: any) {
   console.log('Customer ID:', data.customer_id)
   console.log('Amount:', data.details?.totals?.total || data.amount)
   console.log('Custom Data:', data.custom_data)
+  const supabase = getSupabaseClient()
 
   try {
     let subscription = null
@@ -282,6 +292,7 @@ async function handlePaymentCompleted(data: any) {
 
 async function handlePaymentUpdated(data: any) {
   console.log('Payment updated:', data)
+  const supabase = getSupabaseClient()
 
   const { error } = await supabase
     .from('payments')
